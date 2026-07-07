@@ -62,3 +62,91 @@ paymentRepository.findByUserIdIn(userIds);
 - 현재 스코프 밖이므로 테이블 설계만 참고용으로 보존
 
 ---
+
+## 2026-07-07 — JWT + Redis Refresh Token 구현
+
+**결정 사항**
+- Access Token: 30분 (클라이언트 메모리 보관)
+- Refresh Token: 1일 (Redis 보관, Token Rotation 적용)
+- 로그아웃: Redis에서 Refresh Token 삭제, 프론트에서 Access Token 제거
+
+**추가된 의존성**
+- `spring-boot-starter-data-redis`
+- `io.jsonwebtoken:jjwt-api:0.12.6` / `jjwt-impl` / `jjwt-jackson`
+
+**Docker Compose Redis**
+```yaml
+redis:
+  image: redis:7.2
+  container_name: mini-shop-redis
+  ports: 6379:6379
+```
+
+**Redis Key 구조**
+```
+Key   : rt:{userId}
+Value : refreshToken 문자열
+TTL   : 1일 (86400000ms)
+```
+
+**신규/변경 파일**
+| 파일 | 내용 |
+|---|---|
+| `common/config/RedisConfig.java` | RedisTemplate<String, String> Bean |
+| `common/util/JwtUtil.java` | 토큰 생성/검증/userId 추출 |
+| `common/security/JwtAuthenticationFilter.java` | Bearer 토큰 파싱 → SecurityContext 등록 |
+| `common/config/SecurityConfig.java` | STATELESS, JwtFilter 등록, /auth/** permitAll |
+| `auth/service/TokenService.java` | Redis CRUD (save/get/delete) |
+| `auth/dto/TokenResponse.java` | accessToken + refreshToken + UserResponse |
+| `auth/dto/RefreshRequest.java` | refreshToken 필드 |
+| `auth/facade/AuthFacade.java` | signup/login → TokenResponse, refresh, logout 추가 |
+| `auth/controller/AuthController.java` | POST /auth/refresh, POST /auth/logout 추가 |
+
+**API**
+- `POST /auth/signup` → `TokenResponse`
+- `POST /auth/login` → `TokenResponse`
+- `POST /auth/refresh` `{ refreshToken }` → `TokenResponse` (Token Rotation)
+- `POST /auth/logout` `Authorization: Bearer {accessToken}` → 204
+
+**Token Rotation**
+- /auth/refresh 호출 시 Access Token + Refresh Token 모두 재발급
+- Redis에 저장된 기존 Refresh Token을 새 값으로 덮어씀
+- 탈취된 토큰으로 재사용 시 Redis 값 불일치 → 401 거부
+
+---
+
+## 2026-07-07 — Swagger 추가 및 API 공통 prefix 적용
+
+**결정 사항**
+- 모든 API에 `/api` context-path 적용
+- Swagger UI 추가 (springdoc-openapi 2.7.0)
+- API Docs 경로를 기본 `/v3/api-docs` 대신 `/v1/api-docs`로 변경
+
+**추가된 의존성**
+- `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0`
+
+**설정 변경 (application.yml)**
+```yaml
+springdoc:
+  api-docs:
+    path: /v1/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+
+server:
+  servlet:
+    context-path: /api
+  port: 8080
+```
+
+**접속 URL**
+- API: `http://localhost:8080/api/{도메인}/...`
+- Swagger UI: `http://localhost:8080/api/swagger-ui/index.html`
+- API Docs: `http://localhost:8080/api/v1/api-docs`
+
+**Security 처리**
+- `requestMatchers`는 context-path를 제외한 경로 기준으로 동작
+- `/swagger-ui/**`, `/v1/api-docs/**` permitAll 추가
+- 기존 `/auth/**` matcher는 변경 없이 그대로 유지
+
+---
