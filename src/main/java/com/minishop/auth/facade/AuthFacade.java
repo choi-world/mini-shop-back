@@ -53,7 +53,7 @@ public class AuthFacade {
      * @Description 이메일/비밀번호 로그인. 비밀번호 검증 후 토큰 발급.
      * @Author csd
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public TokenResponse login(LoginRequest request) {
         Auth auth = authService.findLocalAuthByLoginId(request.getEmail());
         authService.verifyPassword(request.getPassword(), auth.getPassword());

@@ -6,6 +6,7 @@ import com.minishop.auth.dto.SignupRequest;
 import com.minishop.auth.dto.TokenResponse;
 import com.minishop.auth.facade.AuthFacade;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,7 +32,7 @@ public class AuthController {
      */
     @PostMapping("/signup")
     public ResponseEntity<TokenResponse> signup(@RequestBody @Valid SignupRequest request) {
-        return ResponseEntity.ok(authFacade.signup(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authFacade.signup(request));
     }
 
     /**
