@@ -4,13 +4,27 @@ spring:
   application:
     name: mini-shop
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
         format_sql: true
         default_batch_fetch_size: 100
 
+jwt:
+  secret: mini-shop-secret-key-for-development-only-must-be-32-chars-or-more
+  access-token-expiration: 1800000
+  refresh-token-expiration: 86400000
+
+springdoc:
+  api-docs:
+    path: /v1/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+
 server:
+  servlet:
+    context-path: /api
   port: 8080
