@@ -150,3 +150,29 @@ server:
 - 기존 `/auth/**` matcher는 변경 없이 그대로 유지
 
 ---
+
+## 2026-07-07 — Auth 도메인 코드 리뷰 및 보안 수정
+
+**배경**
+- 로그인/회원가입 로직 초기 구현 후 코드 리뷰 진행
+- 발견된 5가지 항목 수정 완료
+
+**수정 항목 및 변경 파일**
+
+| # | 항목 | 파일 | 변경 내용 |
+|---|---|---|---|
+| 1 | JWT 토큰 타입 구분 | `common/util/JwtUtil.java` | `type` claim(access/refresh) 추가, `isAccessToken()` 메서드 추가 |
+| 2 | Refresh Token 인증 차단 | `common/security/JwtAuthenticationFilter.java` | `isAccessToken()` 조건 추가 — Refresh Token으로 API 접근 불가 |
+| 3 | Validation 에러 응답 통일 | `common/exception/GlobalExceptionHandler.java` | `MethodArgumentNotValidException` 핸들러 추가, `ErrorResponse` 포맷으로 반환 |
+| 4 | login @Transactional 수정 | `auth/facade/AuthFacade.java` | `@Transactional(readOnly = true)` → `@Transactional` (Redis 쓰기 포함이므로) |
+| 5 | 회원가입 응답 201 | `auth/controller/AuthController.java` | `ResponseEntity.ok()` → `ResponseEntity.status(CREATED).body()` |
+
+**보안 관련 핵심 변경 (1, 2번)**
+- 기존: Access/Refresh Token이 `userId` claim만 공유 → 서로 대체 사용 가능
+- 변경: `type` claim으로 구분, Filter에서 `type=access`인 토큰만 인증 통과
+- 효과: Refresh Token을 탈취해도 일반 API 접근 불가
+
+**API 응답 변경 (5번)**
+- `POST /api/auth/signup`: 200 → **201 Created**
+
+---
