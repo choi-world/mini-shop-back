@@ -29,11 +29,11 @@ public class JwtUtil {
     }
 
     public String generateAccessToken(Long userId) {
-        return generateToken(userId, accessTokenExpiration);
+        return generateToken(userId, accessTokenExpiration, "access");
     }
 
     public String generateRefreshToken(Long userId) {
-        return generateToken(userId, refreshTokenExpiration);
+        return generateToken(userId, refreshTokenExpiration, "refresh");
     }
 
     public Long extractUserId(String token) {
@@ -48,10 +48,19 @@ public class JwtUtil {
         }
     }
 
-    private String generateToken(Long userId, long expiration) {
+    public boolean isAccessToken(String token) {
+        try {
+            return "access".equals(getClaims(token).get("type", String.class));
+        } catch (JwtException e) {
+            return false;
+        }
+    }
+
+    private String generateToken(Long userId, long expiration, String tokenType) {
         Date now = new Date();
         return Jwts.builder()
                 .claim("userId", userId)
+                .claim("type", tokenType)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiration))
                 .signWith(secretKey)
