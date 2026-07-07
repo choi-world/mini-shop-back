@@ -157,7 +157,7 @@ class AuthControllerTest {
             mockMvc.perform(post("/auth/signup")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(signupRequest("new@test.com", "01099999999"))))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.accessToken").value("access-token"))
                     .andExpect(jsonPath("$.refreshToken").value("refresh-token"))
                     .andExpect(jsonPath("$.user").exists());
@@ -283,6 +283,7 @@ class AuthControllerTest {
         @DisplayName("성공 - 인증된 사용자가 로그아웃하면 200을 반환한다")
         void logout_success() throws Exception {
             given(jwtUtil.isExpired("test-token")).willReturn(false);
+            given(jwtUtil.isAccessToken("test-token")).willReturn(true);
             given(jwtUtil.extractUserId("test-token")).willReturn(1L);
 
             mockMvc.perform(post("/auth/logout")
